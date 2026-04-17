@@ -20,7 +20,46 @@ in
       # The GPD Pocket 4 uses a tablet LTPS display, that is mounted rotated 90° counter-clockwise
       "fbcon=rotate:1"
       "video=eDP-1:panel_orientation=right_side_up"
+      # Cap PCIe at Gen 3. The eGPU negotiates Gen 4 x4 at boot by default,
+      # fails to train the link on the AMD 890M, and hangs. Bit layout:
+      # 0x40000 = only Gen 3 capability advertised (Gen 4+ masked off).
+      "amdgpu.pcie_gen_cap=0x40000"
     ];
+  };
+
+  # i2c-hid runtime PM workaround: the HAILUCK keyboard and i2c touchscreen
+  # drop key/touch events after the I2C controller suspends. i2c-designware
+  # (since kernel 3.13) enables runtime PM aggressively, and i2c-hid firmware
+  # designed for Windows-style always-on buses misses interrupt edges when
+  # the controller sleeps. Force power/control=on for every i2c_hid_acpi
+  # device via udev (covers hotplug + resume) plus a boot-time sweep for
+  # already-bound devices.
+  #
+  # Proper upstream fix: kernel patch to i2c-hid-core.c keeping the parent
+  # I2C adapter awake while any HID device is open. Until that lands, this
+  # workaround mirrors what Framework laptop modules ship inline here.
+  services.udev.extraRules = ''
+    ACTION=="add|change", SUBSYSTEM=="hid", SUBSYSTEMS=="i2c", DRIVERS=="i2c_hid_acpi", ATTR{power/control}="on"
+    ACTION=="add|change", SUBSYSTEM=="i2c", DRIVERS=="i2c_hid_acpi", ATTR{power/control}="on"
+  '';
+
+  systemd.services.gpd-pocket-4-i2c-hid-keep-alive = {
+    description = "Keep i2c-hid buses awake so keyboard/touchscreen keys survive idle (GPD Pocket 4)";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-udev-settle.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      for dev in /sys/bus/i2c/drivers/i2c_hid_acpi/*/power/control; do
+        [ -w "$dev" ] && echo on > "$dev" || true
+      done
+      for dev in /sys/bus/hid/drivers/hid-generic/*/power/control \
+                 /sys/bus/hid/drivers/hid-multitouch/*/power/control; do
+        [ -w "$dev" ] && echo on > "$dev" || true
+      done
+    '';
   };
 
   # Turn on IIO for accelerometer screen rotation.
