@@ -81,8 +81,11 @@ in
   # embedded colons are interpreted as hwdb field separators and the rule
   # never matched. The modalias form has no user-authored colons.
   # DMI match scopes the rule to the Pocket 4.
+  # Evdev modalias for this device: input:b0018v0603pF001e0100-*
+  # (Note: v0603 and pF001 with no zero-padding — differs from HID modalias
+  # which uses p0000F001.) DMI scopes to GPD G1628-04.
   services.udev.extraHwdb = ''
-    evdev:input:b0018v0603p0000F001*:dmi:*:svnGPD:pnG1628-04:*
+    evdev:input:b0018v0603pF001*:dmi:*svnGPD:pnG1628-04*
      LIBINPUT_CALIBRATION_MATRIX=0 -1 1 1 0 0
   '';
 
