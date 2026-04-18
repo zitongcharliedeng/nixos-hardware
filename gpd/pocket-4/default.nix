@@ -76,8 +76,13 @@ in
   #
   # This is a udev hwdb entry scoped to the GPD Pocket 4 DMI string so it
   # is inert on any other machine.
+  # Match via HID modalias (bus/vendor/product) instead of device name.
+  # The earlier form used the input name "NVTK0603:00 0603:F001", but the
+  # embedded colons are interpreted as hwdb field separators and the rule
+  # never matched. The modalias form has no user-authored colons.
+  # DMI match scopes the rule to the Pocket 4.
   services.udev.extraHwdb = ''
-    evdev:name:NVTK0603:00 0603:F001:dmi:*svnGPD:pnG1628-04*
+    evdev:input:b0018v0603p0000F001*:dmi:*:svnGPD:pnG1628-04:*
      LIBINPUT_CALIBRATION_MATRIX=0 -1 1 1 0 0
   '';
 
