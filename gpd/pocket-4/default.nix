@@ -24,6 +24,15 @@ in
       # fails to train the link on the AMD 890M, and hangs. Bit layout:
       # 0x40000 = only Gen 3 capability advertised (Gen 4+ masked off).
       "amdgpu.pcie_gen_cap=0x40000"
+      # Disable USB autosuspend globally. The built-in HAILUCK keyboard
+      # reports over USB (idVendor=258a idProduct=000c); even with
+      # power/control=on set post-boot, random scancodes (i, n, o
+      # frequently) are dropped intermittently — likely a USB HID
+      # driver stall triggered by the EC's partial-suspend behavior on
+      # lid events. Closing+reopening the lid resets the USB controller
+      # and the keys work again until the next stall. Disabling all USB
+      # autosuspend eliminates the class of bug at small battery cost.
+      "usbcore.autosuspend=-1"
     ];
   };
 
