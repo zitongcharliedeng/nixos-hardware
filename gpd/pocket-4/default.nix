@@ -65,6 +65,22 @@ in
   # Turn on IIO for accelerometer screen rotation.
   hardware.sensor.iio.enable = lib.mkDefault true;
 
+  # Novatek NVTK0603 touchscreen (HID 0603:F001) coordinate-space rotation.
+  # The display is physically mounted rotated 90° counter-clockwise
+  # (video=eDP-1:panel_orientation=right_side_up), but the touchscreen
+  # reports coordinates in the panel's native (unrotated) frame. Result:
+  # taps land at screen-rotated offsets, so touch feels broken.
+  #
+  # The libinput calibration matrix remaps ABS_X/ABS_Y to match the 90° CCW
+  # display rotation. Matrix "0 -1 1 1 0 0" = rotate_left.
+  #
+  # This is a udev hwdb entry scoped to the GPD Pocket 4 DMI string so it
+  # is inert on any other machine.
+  services.udev.extraHwdb = ''
+    evdev:name:NVTK0603:00 0603:F001:dmi:*svnGPD:pnG1628-04*
+     LIBINPUT_CALIBRATION_MATRIX=0 -1 1 1 0 0
+  '';
+
   fonts.fontconfig = {
     subpixel.rgba = "vbgr"; # Pixel order for rotated screen
 
