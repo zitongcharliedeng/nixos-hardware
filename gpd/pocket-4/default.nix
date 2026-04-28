@@ -74,36 +74,6 @@ in
   # Turn on IIO for accelerometer screen rotation.
   hardware.sensor.iio.enable = lib.mkDefault true;
 
-  # Novatek NVTK0603 touchscreen (HID 0603:F001) coordinate-space rotation.
-  # The display is physically mounted rotated 90° counter-clockwise
-  # (video=eDP-1:panel_orientation=right_side_up), but the touchscreen
-  # reports coordinates in the panel's native (unrotated) frame. Result:
-  # taps land at screen-rotated offsets, so touch feels broken.
-  #
-  # The libinput calibration matrix remaps ABS_X/ABS_Y to match the 90° CCW
-  # display rotation. Matrix "0 -1 1 1 0 0" = rotate_left.
-  #
-  # This is a udev hwdb entry scoped to the GPD Pocket 4 DMI string so it
-  # is inert on any other machine.
-  # Match via HID modalias (bus/vendor/product) instead of device name.
-  # The earlier form used the input name "NVTK0603:00 0603:F001", but the
-  # embedded colons are interpreted as hwdb field separators and the rule
-  # never matched. The modalias form has no user-authored colons.
-  # DMI match scopes the rule to the Pocket 4.
-  # udev's 60-evdev.rules looks up hwdb with
-  #   --lookup-prefix=evdev: <modalias>
-  # i.e. the key is ONLY the input modalias, without any `:dmi:...` suffix.
-  # An earlier attempt scoped the rule to the GPD DMI, but the hwdb query
-  # that udev issues on device add never includes DMI on this path, so the
-  # DMI-scoped rule never matched.
-  #
-  # The Novatek NVTK0603 vendor+product (0603:F001) is unique to this
-  # part, so a modalias-only match is safe: no other shipping device
-  # reports the same bus/vendor/product.
-  services.udev.extraHwdb = ''
-    evdev:input:b0018v0603pF001*
-     LIBINPUT_CALIBRATION_MATRIX=0 -1 1 1 0 0
-  '';
 
   fonts.fontconfig = {
     subpixel.rgba = "vbgr"; # Pixel order for rotated screen
