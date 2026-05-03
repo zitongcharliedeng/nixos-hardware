@@ -16,6 +16,15 @@ in
     # As of kernel version 6.6.72, amdgpu throws a fatal error during init, resulting in a barely-working display
     kernelPackages = mkIf (lib.versionOlder pkgs.linux.version "6.12") pkgs.linuxPackages_latest;
 
+    # Load amdgpu in initramfs so it claims /dev/dri/card0 BEFORE
+    # simple-framebuffer can grab it. Without this, simplefb wins the race
+    # at boot, holds DRM master permanently, and the userspace amdgpu
+    # module sits loaded-but-unbound. Wayland compositors (niri, sway,
+    # hyprland) then can't acquire DRM master and the display either
+    # black-screens or renders at the EFI framebuffer's low resolution
+    # stretched to fill the panel.
+    initrd.kernelModules = [ "amdgpu" ];
+
     kernelParams = [
       # The GPD Pocket 4 uses a tablet LTPS display, that is mounted rotated 90° counter-clockwise
       "fbcon=rotate:1"
@@ -73,6 +82,25 @@ in
 
   # Turn on IIO for accelerometer screen rotation.
   hardware.sensor.iio.enable = lib.mkDefault true;
+
+  # CPU boost cap. The GPD Pocket 4 chassis cannot dissipate full AMD-pstate
+  # boost. Cores burst to 5.1 GHz on idle wake-ups and the firmware low-power
+  # platform profile does NOT enforce a freq ceiling on AMD the way it does
+  # on ThinkPad/Framework. Without this cap, sustained workloads (e.g. nix
+  # builds compiling Rust crates) trigger thermal lockups that hard-freeze
+  # the system and require a hardware reset. Disabling boost still lets
+  # cores scale by load via amd_pstate=guided, just without the high-end
+  # boost band that the chassis can't cool.
+  systemd.services.gpd-pocket-4-disable-cpu-boost = {
+    description = "Disable AMD CPU turbo boost (GPD Pocket 4 thermal cap)";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "sysinit.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.bash}/bin/bash -c 'echo 0 > /sys/devices/system/cpu/cpufreq/boost'";
+    };
+  };
 
 
   fonts.fontconfig = {
